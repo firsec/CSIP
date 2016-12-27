@@ -5,6 +5,7 @@
 #include "scip/pub_var.h"
 #include "scip/scipdefplugins.h"
 
+
 #define CSIP_MAJOR_VERSION 0
 #define CSIP_MINOR_VERSION 3
 #define CSIP_PATCH_VERSION 6
@@ -60,7 +61,7 @@ static inline int retCodeCSIPtoSCIP(int csipRetCode)
 #define SCIP_in_CSIP(x) CSIP_CALL( retCodeSCIPtoCSIP(x) )
 
 // catch CSIP return code from SCIP
-#define CSIP_in_SCIP(x) SCIP_CALL( retCodeCSIPtoSCIP(x) )
+#define CSIP_in_SCIP(x) SCIP_CALL( (SCIP_RETCODE)retCodeCSIPtoSCIP(x) )
 
 // variable sized arrays
 #define INITIALSIZE 64
@@ -192,7 +193,7 @@ CSIP_RETCODE createExprtree(
                 assert(1 == begin[i + 1] - begin[i]);
                 assert(varidx < model->nvars);
                 SCIP_in_CSIP(SCIPexprCreate(SCIPblkmem(scip), &exprs[i],
-                                            ops[i], varpos));
+                                            (SCIP_EXPROP)ops[i], varpos));
                 vars[varpos] = model->vars[varidx];
                 ++varpos;
                 //printf("Seeing variable %d (nchild %d)\n", varidx, begin[i+1] - begin[i]);
@@ -201,7 +202,7 @@ CSIP_RETCODE createExprtree(
         case SCIP_EXPR_CONST:
             assert(1 == begin[i + 1] - begin[i]);
             SCIP_in_CSIP(SCIPexprCreate(SCIPblkmem(scip), &exprs[i],
-                                        ops[i], values[children[begin[i]]]));
+                                        (SCIP_EXPROP)ops[i], values[children[begin[i]]]));
             //printf("Seeing constant %g (nchild %d)\n", values[children[begin[i]]], begin[i+1] - begin[i]);
             break;
         case SCIP_EXPR_MINUS:
@@ -209,7 +210,7 @@ CSIP_RETCODE createExprtree(
             if (begin[i + 1] - begin[i] == 2)
             {
                 SCIP_in_CSIP(SCIPexprCreate(SCIPblkmem(scip), &exprs[i],
-                                            ops[i], exprs[children[begin[i]]], exprs[children[begin[i] + 1]]));
+                                            (SCIP_EXPROP)ops[i], exprs[children[begin[i]]], exprs[children[begin[i] + 1]]));
             }
             else
             {
@@ -219,7 +220,7 @@ CSIP_RETCODE createExprtree(
                                             SCIP_EXPR_CONST, 0.0));
                 // expression is 0 - child
                 SCIP_in_CSIP(SCIPexprCreate(SCIPblkmem(scip), &exprs[i],
-                                            ops[i], zeroexpr, exprs[children[begin[i]]]));
+                                            (SCIP_EXPROP)ops[i], zeroexpr, exprs[children[begin[i]]]));
             }
             //printf("Seeing a minus (nchild %d)\n",  begin[i+1] - begin[i]);
             break;
@@ -231,13 +232,13 @@ CSIP_RETCODE createExprtree(
                 exponent = values[children[begin[children[begin[i] + 1]]]];
                 //printf("Seeing a power with exponent %g (nchild %d)\n", exponent, begin[i+1] - begin[i]);
                 SCIP_in_CSIP(SCIPexprCreate(SCIPblkmem(scip), &exprs[i],
-                                            ops[i], exprs[children[begin[i]]], exponent));
+                                            (SCIP_EXPROP)ops[i], exprs[children[begin[i]]], exponent));
             }
             break;
         case SCIP_EXPR_DIV:
             assert(2 == begin[i + 1] - begin[i]);
             SCIP_in_CSIP(SCIPexprCreate(SCIPblkmem(scip), &exprs[i],
-                                        ops[i], exprs[children[begin[i]]], exprs[children[begin[i] + 1]]));
+                                        (SCIP_EXPROP)ops[i], exprs[children[begin[i]]], exprs[children[begin[i] + 1]]));
             //printf("Seeing a division (nchild %d)\n",  begin[i+1] - begin[i]);
             break;
         case SCIP_EXPR_SQRT:
@@ -245,7 +246,7 @@ CSIP_RETCODE createExprtree(
         case SCIP_EXPR_LOG:
             assert(1 == begin[i + 1] - begin[i]);
             SCIP_in_CSIP(SCIPexprCreate(SCIPblkmem(scip), &exprs[i],
-                                        ops[i], exprs[children[begin[i]]]));
+                                        (SCIP_EXPROP)ops[i], exprs[children[begin[i]]]));
             //printf("Seeing a sqrt/exp/log (nchild %d)\n",  begin[i+1] - begin[i]);
             break;
         case SCIP_EXPR_SUM:
@@ -261,7 +262,7 @@ CSIP_RETCODE createExprtree(
                 }
 
                 SCIP_in_CSIP(SCIPexprCreate(SCIPblkmem(scip), &exprs[i],
-                                            ops[i], nchildren, childrenexpr));
+                                            (SCIP_EXPROP)ops[i], nchildren, childrenexpr));
 
                 free(childrenexpr);
                 //printf("Seeing a sum/product (nchild %d)\n",  begin[i+1] - begin[i]);
@@ -449,7 +450,7 @@ CSIP_RETCODE CSIPaddVar(CSIP_MODEL *model, double lowerbound, double upperbound,
     SCIP_in_CSIP(SCIPfreeTransform(scip));
 
     SCIP_in_CSIP(SCIPcreateVarBasic(scip, &var, NULL, lowerbound, upperbound, 0.0,
-                                    vartype));
+                                    (SCIP_VARTYPE)vartype));
     SCIP_in_CSIP(SCIPaddVar(scip, var));
 
     // do we need to resize?
@@ -525,7 +526,7 @@ CSIP_RETCODE CSIPchgVarType(
 
     SCIP_in_CSIP(SCIPfreeTransform(scip));
 
-    SCIP_in_CSIP(SCIPchgVarType(scip, var, vartype, &infeas));
+    SCIP_in_CSIP(SCIPchgVarType(scip, var, (SCIP_VARTYPE)vartype, &infeas));
     // TODO: don't ignore `infeas`?
     // for SCIP, solving a problem with a binary variable with bounds not in [0,1] produces an error
     // here we change them to the correct value, since JuMP seems to expect that behaviour
@@ -1021,6 +1022,7 @@ CSIP_RETCODE CSIPgetVarValues(CSIP_MODEL *model, double *output)
         return CSIP_RETCODE_ERROR;
     }
 
+//    printf("num of vars %d\n", model->nvars);
     for (i = 0; i < model->nvars; ++i)
     {
         var = model->vars[i];
@@ -1513,3 +1515,5 @@ CSIP_RETCODE CSIPaddHeuristicCallback(
 
     return CSIP_RETCODE_OK;
 }
+
+

@@ -282,6 +282,71 @@ static void test_nlp()
     CHECK(CSIPfreeModel(m));
 }
 
+static void test_QCQP(double R) {
+  /*Simple qcqp, H is diag matrix and positive define.
+   * min 0.5*x'*H*x + g'*x + k 
+   * x'*x < r**2
+   *
+   * ex:
+   * min 0.5*x^2 +0.5y^2 + x + 2y + 6 
+   * s.t. x^2 + y^2 < R
+   * solution:
+   *    (-1, -2) when R > 5
+   *
+   */
+  
+  //the indices of lin and qual seems no use. Change it to 0->n-1 as default?
+  int indices[2] = {0, 1}; 
+  double lincoef[2] = {1.0, 2.0};
+  //double linBias = 6.0;
+  
+  double quadcoef[2] = {0.5, 0.5};
+  
+  double quadConCoef[2] = {1.0, 1.0};
+  //double quadConBias = -10.0;
+
+  double solution[2];
+
+  CSIP_MODEL *m;
+
+  CHECK(CSIPcreateModel(&m));
+  CHECK(CSIPsetIntParam(m, "display/verblevel", 2));
+
+  // x
+  CHECK(CSIPaddVar(m, -INFINITY, INFINITY, CSIP_VARTYPE_CONTINUOUS, NULL));
+  // y
+  CHECK(CSIPaddVar(m, -INFINITY, INFINITY, CSIP_VARTYPE_CONTINUOUS, NULL));
+
+  mu_assert_int("Wrong number of vars!", CSIPgetNumVars(m), 2);
+
+  // sparse quadratic objective
+  CHECK(CSIPsetQuadObj(m, 2, indices, lincoef,  2, indices, indices, quadcoef));
+
+  // sparse quadratic constraint
+  CHECK(CSIPaddQuadCons(m, 0, NULL, NULL, 2, indices, indices, quadConCoef, -INFINITY, R, NULL));
+  //CHECK(CSIPaddLinCons(m, 2, linindices, lincoef, 1.0, INFINITY, NULL));
+
+  mu_assert_int("Wrong number of conss!", CSIPgetNumConss(m), 1);
+
+  CHECK(CSIPsolve(m));
+
+  int solvestatus = CSIPgetStatus(m);
+  mu_assert_int("Wrong status!", solvestatus, CSIP_STATUS_OPTIMAL);
+
+  double objval = CSIPgetObjValue(m);
+  printf("obj value %32.16f\n", objval);
+  //mu_assert_near("Wrong objective value!", objval, 0.5);
+
+  CHECK(CSIPgetVarValues(m, solution));
+  printf("solution point: \nx %32.16f\ny %32.16f\n", solution[0], solution[1]);
+
+  // use weaker check, because of nonlinear constraint's abstol
+  //mu_assert("Wrong solution!", fabs(solution[0] - 0.5) < 0.01);
+  //mu_assert("Wrong solution!", fabs(solution[1] - 0.5) < 0.01);
+
+  CHECK(CSIPfreeModel(m));
+}
+
 static void test_quadobj()
 {
     /*
@@ -1043,6 +1108,8 @@ int main(int argc, char **argv)
     mu_run_test(test_initialsol);
     mu_run_test(test_heurcb);
     mu_run_test(test_params);
+    test_QCQP(10);
+    test_QCQP(3);
 
     printf("All tests passed!\n");
     return 0;

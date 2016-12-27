@@ -18,7 +18,7 @@ CSIPSRCDIR 	= $(CSIPDIR)/src
 CSIPINC 	= $(CSIPDIR)/include
 CSIPLIBDIR 	= $(CSIPDIR)/lib
 
-CFLAGS 		= -std=c99 -Wall -pedantic
+CFLAGS 		= -std=c++11 -Wall -pedantic
 
 SCIPSRC 	= $(CSIPLIBDIR)/include
 SCIPLIB 	= -lscipopt
@@ -91,12 +91,12 @@ $(CSIPLIBDIR):
 	make links
 
 $(CSIPLIB): $(CSIPSRC)
-	gcc $(CFLAGS) $(FLAGS) -c $< $(LFLAGS) $(LINKFLAGS) $(SCIPLIB) -fPIC -o $(CSIPOBJ)
-	gcc $(CFLAGS) $(CSIPOBJ) $(LFLAGS) $(LINKFLAGS) $(SCIPLIB) -fPIC -shared -o $@
+	g++ $(CFLAGS) $(FLAGS) -c $< $(LFLAGS) $(LINKFLAGS) $(SCIPLIB) -fPIC -o $(CSIPOBJ)
+	g++ $(CFLAGS) $(CSIPOBJ) $(LFLAGS) $(LINKFLAGS) $(SCIPLIB) -fPIC -shared -o $@
 
 $(TESTBIN): $(TESTSRC) $(CSIPLIB)
 	@echo "compiling test"
-	gcc $(CFLAGS) $(TESTFLAGS) $< $(LINKTESTFLAGS) $(TESTLIBS) $(LTESTFLAGS) -o $@
+	g++ $(CFLAGS) $(TESTFLAGS) $< $(LINKTESTFLAGS) $(TESTLIBS) $(LTESTFLAGS) -o $@
 
 ASTYLEOPTS	= --style=allman --indent=spaces=4 --indent-cases --pad-oper --pad-header --unpad-paren --align-pointer=name --add-brackets --max-code-length=80
 
